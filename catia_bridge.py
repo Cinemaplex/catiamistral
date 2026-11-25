@@ -2,7 +2,10 @@ import os
 import re
 import sys
 
-from mistralai.client import Mistral
+try:
+    from mistralai import Mistral
+except ImportError:
+    from mistralai.client import Mistral
 
 MODEL = os.environ.get("MISTRAL_MODEL", "mistral-small-latest")
 MACRO_PATH = os.environ.get("CATIA_MACRO_PATH", "generated_macro.catvbs")

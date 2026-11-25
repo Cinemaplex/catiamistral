@@ -1,7 +1,10 @@
 import os
 import sys
 
-from mistralai.client import Mistral
+try:
+    from mistralai import Mistral
+except ImportError:
+    from mistralai.client import Mistral
 
 
 def main() -> None:
