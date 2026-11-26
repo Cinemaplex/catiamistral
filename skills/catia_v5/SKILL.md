@@ -54,6 +54,49 @@ Contraintes optionnelles (les cotes exactes viennent des coordonnées) :
 `skh.Constraints.AddBiEltCstDeg` etc. Ne pas sur-contraindre : le modèle de
 géométrie reste calculé à partir des coordonnées 2D.
 
+## Licences de la station (MD2 / GSD / ST1)
+
+Le worker déclare les licences attendues via `CATIAMISTRAL_LICENSES` (défaut
+`MD2,GSD,ST1`). A quoi elles servent en automation :
+
+- **MD2** (Mechanical Design 2) : esquisses, Pad/Pocket/Shaft, Assembly,
+  paramètres. Toute macro de pièces solides s'appuie dessus.
+- **GSD** (Generative Shape Design) : HybridShapeFactory étendu — surfaces
+  complexes, offset/fill/join avancés, lois. Les appels GSD échouent si la
+  capa manque.
+- **ST1** (STEP Core Interface) : `Documents.NewFrom("fichier.step")` pour
+  importer un STEP ; IGES exige IG1 (souvent présent). Le worker l'utilise
+  pour les jobs de relevé dimensionnel (type `measure`).
+
+Une erreur type "No more licenses available" / "license is not granted" se
+traduit côté worker par le statut `license_error` (message + liste attendue).
+En macro, ne pas deviner une capa absente : tester/enchaîner plutôt GSD
+uniquement quand le plan le requiert.
+
+## Contraintes d'esquisse (étude complète avec contraintes)
+
+Créer des contraintes robustes (autour d'une géométrie déjà posée) :
+
+```vbscript
+Dim cst As Constraint
+' Axe d'enum CatConstraintType : valeurs numeriques (VBScript n'a pas les
+' constantes nommees VBA). Exemples usuels : 1 = On (coincidence simple),
+' 2 = Distance, 3 = Length, 4 = Radius, 6 = Horizontality, 7 = Verticality.
+Set cst = skh.Constraints.AddBiEltCst(2, l1, originPlaneOrLine)   ' distance
+Set cst = skh.Constraints.AddTriEltCst(<angle>, l1, l2, sommet)   ' angle
+' Optionnel : rendre la cote pilotante puis la changer
+' cst.Mode = 0                       ' catCstModeDrivingDimension
+' cst.Value.Value = 47.5             ' nouveau rayon/distance (unités SI base?)
+part.Update()
+```
+
+Règle de robustesse : commencer avec 2-3 contraintes (distance/rayon),
+`part.Update()`, vérifier le résultat (statut + mesures du worker), puis
+ajouter. En cas d'erreur de contrainte (message CATIA), corriger la macro et
+reposer un job - ne jamais empiler 10 contraintes en un bloc de première fois.
+En VBScript les constantes d'enum n'existent pas : passer les valeurs
+numériques et valider par le test.
+
 ## Volume : Pad / Pocket / Shaft
 
 ```vbscript
@@ -129,3 +172,25 @@ Le worker renvoie automatiquement dans le résultat :
 
 Pour fournir plus de mesures, la macro peut les écrire dans une variable et le
 worker les remonte : garder la macro simple, l'agent analysera result.json.
+
+Le worker sait aussi faire un relevé dimensionnel complet d'un fichier existant
+(`type: "measure"`, déposé via create_measure_job) : ouverture du .CATPart /
+.CATProduct / .CATShape / .CGR (ou import .step/.stp via Documents.NewFrom si
+ST1), puis SPAWorkbench sur le corps principal :
+
+- masse (`GetMass`) en kg, volume (`GetVolume`) en m3, surface (`GetArea`) en m2 ;
+- centre de gravité (`GetCOG`) en mètres ;
+- nombre de corps et d'esquisses ;
+- paramètres pilotants (nom + valeur, max 200).
+
+Résultat publié dans result.json, champ `dimensions` (un objet par fichier,
+avec erreurs éventuelles par fichier). Unités SI.
+
+Dans une macro de conception, la même API est utilisable pour vérifier les
+mesures cibles :
+
+```vbscript
+Dim spa As Workbench : Set spa = doc.GetWorkbench("SPAWorkbench")
+Dim meas : Set meas = spa.GetMeasurable(refBody)
+Dim masse: masse = meas.GetMass()   ' kg - à comparer à l'exigence client
+```

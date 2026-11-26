@@ -17,6 +17,16 @@ PENDING_DIR = "jobs/pending"
 DONE_DIR = "jobs/done"
 DATA_DIR = "data"
 REFERENCE_PATH = "skills/catia_v5/SKILL.md"
+MEASURE_EXTENSIONS = (
+    ".catpart",
+    ".catproduct",
+    ".catshape",
+    ".cgr",
+    ".step",
+    ".stp",
+    ".igs",
+    ".iges",
+)
 CLOUD_JITTER_MSG = "Depot GitHub indisponible, reessaie plus tard."
 
 
@@ -149,6 +159,47 @@ def create_design_job(title: str, description: str, vbscript: str) -> dict:
 
 
 @agents.tool(model_access="direct")
+def create_measure_job(title: str, input_paths: list) -> dict:
+    """Depose un job de releve dimensionnel (avant-projet) : le worker ouvrira
+    les fichiers CAO listes et remontera les donnees dimensionnelles (masse,
+    volume, surface, centre de gravite, parametres, esquisse/bodies).
+    input_paths : chemins dans le depot, ex. ['data/bride.CATPart'].
+    Renvoie {'job_id': ...} a suivre avec get_job_result().
+    """
+    if not input_paths:
+        raise agents.ToolError("Fournir au moins un fichier CAO dans input_paths.")
+    cleaned = []
+    for path in input_paths:
+        path = path.strip().lstrip("/")
+        if not path.startswith(DATA_DIR + "/"):
+            raise agents.ToolError(
+                f"Les fichiers CAO clients sont attendus sous '{DATA_DIR}/' : {path}"
+            )
+        extension = os.path.splitext(path)[1].lower()
+        if extension not in MEASURE_EXTENSIONS:
+            raise agents.ToolError(
+                f"Extension non supportee pour releve dimensionnel : {path} "
+                f"(supportes : CATPart, CATProduct, CATShape, CGR, STEP, IGES)."
+            )
+        cleaned.append(path)
+    job_id = time.strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:6]
+    job = {
+        "job_id": job_id,
+        "type": "measure",
+        "title": title,
+        "inputs": cleaned,
+        "created_by": "agent",
+        "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+    _put_file(
+        f"{PENDING_DIR}/{job_id}.json",
+        json.dumps(job, indent=2).encode(),
+        f"agent: job measure {job_id} {title[:60]}",
+    )
+    return {"job_id": job_id, "status": "queued", "inputs": cleaned}
+
+
+@agents.tool(model_access="direct")
 def list_design_jobs() -> dict:
     """Liste les jobs en attente et les job récemment terminés dans le dépôt."""
     def _list(folder: str) -> list[str]:
@@ -191,8 +242,14 @@ def get_job_result(job_id: str) -> dict:
     encore fini, sinon le statut d'execution dans CATIA, les mesures et les chemins.
     """
     try:
-        return _get_file(f"{DONE_DIR}/{job_id}/result.json")
+        payload = _get_file(f"{DONE_DIR}/{job_id}/result.json")
     except agents.ToolError as error:
         if "404" in str(error):
             return {"job_id": job_id, "status": "pending"}
         raise
+    if payload.get("encoding") == "base64" and payload.get("content"):
+        try:
+            return json.loads(base64.b64decode(payload["content"]))
+        except ValueError:
+            return payload
+    return payload

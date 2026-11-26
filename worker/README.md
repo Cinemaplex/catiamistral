@@ -5,6 +5,25 @@ Il surveille le dossier `jobs/pending/` du depot GitHub, execute chaque macro
 VBScript dans CATIA via COM, puis publie result.json (+ capture .jpg) dans
 `jobs/done/<job_id>/` puis supprime le job pending.
 
+Deux types de jobs :
+- **design** : execution d'une macro VBScript dans CATIA.
+- **measure** (avant-projet) : telecharge les fichiers listes dans `inputs`
+  (`data/`), les ouvre dans CATIA (import STEP via `Documents.NewFrom` si ST1)
+  et releve masse, volume, surface, centre de gravite, corps, esquisses et
+  parametres (unites SI) publies dans `dimensions` de result.json.
+
+Licences attendues sur la station (configurables) :
+
+| Licence | Role |
+| --- | --- |
+| MD2 | Part/Product Design, esquisses, volumes |
+| GSD | Generative Shape Design (wireframe, surfaces) |
+| ST1 | import STEP (.step/.stp) |
+
+Pour adapter : `$env:CATIAMISTRAL_LICENSES = "MD2,GSD,ST1"`.
+Si une licence manque, le resultat porte le statut `license_error` avec le
+message CATIA ; CATIA doit rester licence au titre du poste (Dassault).
+
 ## Premier lancement
 
 ```powershell

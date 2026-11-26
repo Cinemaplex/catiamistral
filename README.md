@@ -58,6 +58,25 @@ Deposez vos PDF (dossiers techniques, plans, cahiers des charges) dans le dossie
 `data/` du depot. L'agent les lit par OCR (`ingest_pdf_spec`) et en extrait
 dimensions, tolerances et regles avant de concevoir.
 
+Les fichiers CAO (`.CATPart`, `.CATProduct`, `.CATShape`, `.CGR`, `.step`,
+`.stp`, `.igs`, `.iges`) sont aussi deposes dans `data/` : l'agent peut alors
+deposer un job de **releve dimensionnel** (`create_measure_job`) pour un
+avant-projet. Le worker ouvre chaque fichier dans CATIA et remonte masse,
+volume, surface, centre de gravite, nombre de corps/esquisses et parametres
+(unites SI) dans le champ `dimensions` de result.json.
+
+## Licences CATIA attendues (cote station)
+
+| Licence | Role | Utilisation dans le flux |
+| --- | --- | --- |
+| MD2 | Mechanical Design 2 (Part/Product, esquisses, volumes) | toutes les macros de pieces |
+| GSD | Generative Shape Design (wireframe, surfaces) | surfacage avance |
+| ST1 | STEP Core Interface | import `.step`/`.stp` (relevé/avant-projet) |
+
+En cas d'absence, le worker publie un resultat `license_error` (message CATIA
++ liste attendue) ; l'agent previent l'utilisateur au lieu de retenter.
+Personnalisez la liste avec `CATIAMISTRAL_LICENSES` (ex. `MD2,GSD,ST1,IG1`).
+
 ## Utilisation stand-alone (sans agent deploye)
 
 L'ancien pont local reste disponible :
@@ -76,6 +95,7 @@ python catia_bridge.py "cree une plaque rectangulaire 100x50x10 mm avec 4 trous 
 | `CATIAMISTRAL_POLL` | worker | polling en secondes (20) |
 | `CATIAMISTRAL_DRY_RUN` | worker | 1 = sans CATIA |
 | `CATIAMISTRAL_OUTPUT` | worker | dossier local de sortie (`./output`) |
+| `CATIAMISTRAL_LICENSES` | worker | licences CATIA disponibles (defaut `MD2,GSD,ST1`) |
 | `MISTRAL_MODEL` | catia_bridge.py | modele du pont stand-alone |
 | `CATIA_MACRO_PATH` | catia_bridge.py | chemin de la macro generee |
 

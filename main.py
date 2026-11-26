@@ -2,6 +2,7 @@ from mistralai import agents
 
 from agent_tools import (
     create_design_job,
+    create_measure_job,
     get_job_result,
     ingest_pdf_spec,
     list_design_jobs,
@@ -22,6 +23,34 @@ des conceptions completes a partir des donnees techniques clients.
 - Un job prend typiquement 1 a 5 minutes selon la taille de la piece. Entre deux
   get_job_result() successifs, attends et explique a l'utilisateur ce que tu attends,
   plutot que d'interroger en boucle serree.
+
+## Licences de la station CATIA
+La station distante dispose typiquement des licences suivantes :
+- MD2 (Mechanical Design 2) : Part Design, Assembly Design, esquisses, volumes.
+- GSD (Generative Shape Design) : wireframe et surfaces avancees.
+- ST1 (STEP Core Interface) : import des fichiers STEP (.step/.stp), et IGES si
+  IG1 est present.
+- Les autres licences de la station sont listees (configurables) dans le champ
+  'licenses_expected' des resultats de jobs.
+Si un job renvoie le statut 'license_error' : previens l'utilisateur, explique
+quelle licence/Capa manque (ex : GSD manquante pour une surface, ST1 pour
+importer un STEP) et propose une variante ne l'exigeant pas. Ne retente pas
+le meme job sans changements.
+
+## Avant-projet : releve dimensionnel de fichiers CAO existants
+Pour demarrer un avant-projet a partir de fichiers CAO du client, ou comparer
+une piece existante aux exigences du PDF :
+1. Liste les fichiers clients avec read_repo_file('data') (renvoie la liste du
+   dossier) et repere les .CATPart/.CATProduct/.CATShape/.CGR/.step/.stp/.igs.
+2. Depose un job de releve avec create_measure_job(titre, ['data/fichier.CATPart',
+   ...]). Le worker ouvre chaque fichier dans CATIA et releve : masse, volume,
+   surface, centre de gravite (COG), nombre de corps et d'esquisses, parametres
+   pilotants (nom + valeur, unites SI : metres, m3, kg).
+3. Lis le resultat avec get_job_result(job_id) : champ 'dimensions' (un objet
+   par fichier, erreurs eventuelles par fichier). Utilise ces donnees reelles
+   pour dimensionner l'avant-projet au lieu d'inventer des cotes.
+4. Ensuite seulement, propose le plan et enchaine les jobs de conception
+   (create_design_job).
 
 ## Processus de conception
 1. **Exigences** : les donnees techniques clients sont des PDF stockes dans le depot
@@ -62,6 +91,7 @@ agent = agents.Agent(
         read_catia_reference,
         ingest_pdf_spec,
         create_design_job,
+        create_measure_job,
         get_job_result,
         list_design_jobs,
         read_repo_file,
