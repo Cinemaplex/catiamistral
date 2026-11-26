@@ -55,3 +55,15 @@ python worker\catia_worker.py
 
 Planificateur de taches Windows -> au connexion de session, action :
 `python.exe C:\chemin\catiamistral\worker\catia_worker.py`.
+
+## Desinstallation propre (repartir de zero)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File worker\uninstall_worker.ps1
+```
+
+Le script arrete le worker, supprime la tache planifiee, efface les variables
+d'environnement du projet, desinstalle pywin32 et propose la suppression du
+dossier du projet (confirmation demandee). CATIA, Windows et Python ne sont
+pas touches. Le depot GitHub reste en ligne (a supprimer web si besoin).
+Option `-KeepToken` : conserve `GITHUB_TOKEN` pour re-installer vite.

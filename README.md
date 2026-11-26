@@ -99,6 +99,17 @@ python catia_bridge.py "cree une plaque rectangulaire 100x50x10 mm avec 4 trous 
 | `MISTRAL_MODEL` | catia_bridge.py | modele du pont stand-alone |
 | `CATIA_MACRO_PATH` | catia_bridge.py | chemin de la macro generee |
 
+## Desinstallation propre
+
+Pour retirer tout ce que le projet a installe sur le poste (worker, tache
+planifiee, variables, pywin32, dossier projet) et repartir sur une base saine :
+
+```powershell
+powershell -ExecutionPolicy Bypass -File worker\uninstall_worker.ps1
+```
+
+CATIA et sa licence ne sont jamais touches ; le depot GitHub reste en ligne.
+
 ## Securite
 
 - Utilisez un token GitHub fine-grained limite a ce depot (contenus RW).
