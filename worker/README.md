@@ -64,6 +64,16 @@ python worker\catia_worker.py
 4. Publie `jobs/done/<job_id>/result.json` et `screenshot.jpg`, supprime le job
    pending.
 
+## Verification de l'installation (avant le 1er lancement)
+
+Teste Python, pywin32, le token, le depot, la presence de CATIA, les licences,
+le dossier reseau optionnel et les droits d'ecriture - et affiche quoi faire
+pour chaque anomalie :
+
+```powershell
+powershell -ExecutionPolicy Bypass -File worker\verify_install.ps1
+```
+
 ## Execution au demarrage (optionnel)
 
 Planificateur de taches Windows -> au connexion de session, action :

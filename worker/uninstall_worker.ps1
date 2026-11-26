@@ -51,7 +51,7 @@ foreach ($name in $variables) {
     Write-Host "Variable supprimee : $name"
 }
 
-# 4. Desinstaller pywin32 (la seule bibliothèque Python du projet)
+# 4. Desinstaller pywin32 (la seule bibliotheque Python du projet)
 Write-Host "Desinstallation de pywin32..."
 pip uninstall -y pywin32 2>$null
 

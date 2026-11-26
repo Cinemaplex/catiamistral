@@ -51,6 +51,12 @@ python worker\catia_worker.py
 - `CATIAMISTRAL_DRY_RUN=1` pour tester le flux complet sans toucher CATIA.
 - Les fichiers produits sont sauvegardes dans `output/` et la capture publiee dans
   `jobs/done/<job_id>/screenshot.jpg` (lue ensuite par l'agent).
+- Verification automatique de l'installation (Python, pywin32, token, depot,
+  CATIA, licences, droits) avec instruction de correction pour chaque anomalie :
+
+```powershell
+powershell -ExecutionPolicy Bypass -File worker\verify_install.ps1
+```
 
 ## 3. Donnees techniques clients
 
