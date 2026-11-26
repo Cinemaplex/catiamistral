@@ -24,6 +24,19 @@ Pour adapter : `$env:CATIAMISTRAL_LICENSES = "MD2,GSD,ST1"`.
 Si une licence manque, le resultat porte le statut `license_error` avec le
 message CATIA ; CATIA doit rester licence au titre du poste (Dassault).
 
+## Fichiers clients : reseau local ou GitHub (transparent)
+
+Definissez `CATIAMISTRAL_DATA_DIR` (ex. `\\serveur\donnees`) : le worker
+cherche chaque fichier CAO du releve d'abord sur ce partage, sinon le
+telecharge depuis GitHub. L'origine reelle de chaque fichier est tracee dans
+result.json (champ `origin`). Aucune regle a changer au quotidien.
+
+Diagnostic des origines (web vs reseau) :
+
+```powershell
+powershell -ExecutionPolicy Bypass -File worker\check_sources.ps1
+```
+
 ## Premier lancement
 
 ```powershell

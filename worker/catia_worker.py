@@ -9,8 +9,11 @@ Configuration (variables d'environnement) :
 - CATIAMISTRAL_REPO     : depot, defaut Cinemaplex/catiamistral
 - CATIAMISTRAL_POLL     : intervalle de polling en secondes, defaut 20
 - CATIAMISTRAL_DRY_RUN  : 1 = genere les macros sans toucher CATIA (pour tester)
-- CATIAMISTRAL_OUTPUT   : dossier de sortie local, defaut ./output
+- CATIAMISTRAL_OUTPUT   : dossier de sortie local, defaut ./output (UNC accepte)
 - CATIAMISTRAL_LICENSES : licences CATIA disponibles, defaut "MD2,GSD,ST1"
+- CATIAMISTRAL_DATA_DIR : dossier partage (ex \\\\serveur\\donnees) cherche en
+                          priorite pour les fichiers CAO du releve ; sinon GitHub.
+                          Resultat 'origin' par fichier + script check_sources.ps1.
 
 Deux types de jobs :
 - design  : execute une macro VBScript (champ 'vbscript') dans CATIA.
@@ -49,6 +52,7 @@ MEASURE_EXTENSIONS = (
     ".iges",
 )
 STEP_EXTENSIONS = (".step", ".stp", ".igs", ".iges")
+DATA_DIR_LOCAL = os.environ.get("CATIAMISTRAL_DATA_DIR", "")
 
 
 def token() -> str:
@@ -110,6 +114,20 @@ def download_repo_file(repo_path: str, local_path: str) -> str:
     with open(local_path, "wb") as handle:
         handle.write(payload)
     return local_path
+
+
+def resolve_measure_input(repo_path: str, download_dir: str) -> tuple[str, str]:
+    """Renvoie (chemin_local, origine). Cherche le fichier CAO d'abord sur le
+    dossier partage reseau (si CATIAMISTRAL_DATA_DIR est defini), sinon le
+    telecharge depuis GitHub. L'origine est tracee pour le diagnostic."""
+    name = os.path.basename(repo_path)
+    if DATA_DIR_LOCAL:
+        candidate = os.path.join(DATA_DIR_LOCAL, name)
+        if os.path.exists(candidate):
+            return candidate, f"reseau local : {DATA_DIR_LOCAL}\\{name}"
+    local = os.path.join(download_dir, name)
+    download_repo_file(repo_path, local)
+    return local, f"github : {repo_path}"
 
 
 def is_license_error(message: str) -> bool:
@@ -239,12 +257,12 @@ def process_measure_job(job: dict, result: dict) -> None:
                 }
             )
             continue
-        local = os.path.join(download_dir, name)
         try:
-            download_repo_file(repo_path, local)
+            local, origin = resolve_measure_input(repo_path, download_dir)
         except Exception as error:
             dimensions.append(
-                {"source": repo_path, "error": "telechargement : " + str(error)[:300]}
+                {"source": repo_path, "origin": "github : " + repo_path,
+                 "error": "telechargement : " + str(error)[:300]}
             )
             continue
         doc = None
@@ -253,9 +271,11 @@ def process_measure_job(job: dict, result: dict) -> None:
                 doc = catia.Documents.NewFrom(local)
             else:
                 doc = catia.Documents.Open(local)
-            dimensions.append(extract_dimensions(doc, repo_path))
+            entry = extract_dimensions(doc, repo_path)
+            entry["origin"] = origin
+            dimensions.append(entry)
         except Exception as error:
-            entry = {"source": repo_path, "error": str(error)[:800]}
+            entry = {"source": repo_path, "origin": origin, "error": str(error)[:800]}
             if is_license_error(entry["error"]):
                 entry["license_check"] = LICENSES
             dimensions.append(entry)
@@ -355,6 +375,14 @@ def main() -> None:
         f"Worker CATIA : depot {REPO}, polling {POLL_SECONDS}s, "
         f"dry_run={DRY_RUN}, licences={LICENSES}"
     )
+    if DATA_DIR_LOCAL:
+        print(
+            f"Donnees CAO : recherche d'abord sur le reseau ({DATA_DIR_LOCAL}), "
+            "puis sur GitHub si absent. Origines tracees dans result.json."
+        )
+    else:
+        print("Donnees CAO : GitHub uniquement (defini CATIAMISTRAL_DATA_DIR pour le reseau).")
+    print("Diagnostic : worker\\check_sources.ps1 (origines code/donnees/resultats).")
     while True:
         pending = gh("GET", PENDING_DIR)
         if pending is None:

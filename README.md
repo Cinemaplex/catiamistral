@@ -96,8 +96,23 @@ python catia_bridge.py "cree une plaque rectangulaire 100x50x10 mm avec 4 trous 
 | `CATIAMISTRAL_DRY_RUN` | worker | 1 = sans CATIA |
 | `CATIAMISTRAL_OUTPUT` | worker | dossier local de sortie (`./output`) |
 | `CATIAMISTRAL_LICENSES` | worker | licences CATIA disponibles (defaut `MD2,GSD,ST1`) |
+| `CATIAMISTRAL_DATA_DIR` | worker | dossier partage reseau cherche en priorite pour les fichiers CAO du releve (defaut : vide = GitHub) |
 | `MISTRAL_MODEL` | catia_bridge.py | modele du pont stand-alone |
 | `CATIA_MACRO_PATH` | catia_bridge.py | chemin de la macro generee |
+
+## Code et donnees : GitHub ou reseau local ?
+
+- Le **code du projet** et la **file d'attente des jobs** restent sur GitHub :
+  c'est le seul canal par lequel l'agent cloud communique (connexion sortante,
+  aucune porte ouverte). Une copie locale de consultation est possible mais
+  n'est pas utilisee par le systeme.
+- Les **fichiers CAO clients** (releve dimensionnel) peuvent vivre sur votre
+  reseau : definissez `CATIAMISTRAL_DATA_DIR` (ex. `\\serveur\donnees`). Le
+  worker cherche chaque fichier d'abord sur le reseau, sinon le telecharge
+  depuis GitHub. L'origine de chaque fichier est tracee dans result.json
+  (champ `origin`) : transparante pour vous, verifiable a tout moment.
+- Diagnostic : `powershell -ExecutionPolicy Bypass -File worker\check_sources.ps1`
+  affiche d'ou viennent code/donnees/resultats et teste les deux chemins.
 
 ## Desinstallation propre
 
