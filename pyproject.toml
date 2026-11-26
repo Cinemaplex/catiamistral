@@ -1,0 +1,11 @@
+[project]
+name = "catiamistral"
+version = "0.2.0"
+description = "Agent de conception pilotant CATIA V5-6R2017 depuis le cloud Vibe"
+requires-python = ">=3.12"
+dependencies = [
+    "mistralai-agents>=1.1.2,<1.2",
+]
+
+[tool.uv]
+exclude-newer-package = { mistralai-agents = false, mistralai-vibe-harness = false }

@@ -1,0 +1,7 @@
+.env
+.venv/
+.git/
+__pycache__/
+*.py[oc]
+output/
+generated_macro.catvbs
